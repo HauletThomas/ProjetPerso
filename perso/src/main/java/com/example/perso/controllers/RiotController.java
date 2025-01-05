@@ -18,20 +18,8 @@ public class RiotController {
         return riotService.getAccountByGameName(gameName, tagLine);
     }
 
-    @GetMapping("/getMatchList")
-    public String getMatchList(@RequestParam String puuid,
-                              @RequestParam Integer start,
-                              @RequestParam Integer count) {
-        return riotService.getMatchList(puuid, start, count);
-    }
     @GetMapping("/getMatchById")
     public MatchStatistics getMatchById(@RequestParam String puuid){
         return riotService.getMatchById(puuid);
     }
-
-//    @GetMapping("/getMatchStatistics")
-//    public MatchStatistics getMatchStatistics(@RequestParam String puuid, @RequestParam Integer count){
-//        return riotService.getMatchStatistics(puuid, count);
-//    }
-
 }

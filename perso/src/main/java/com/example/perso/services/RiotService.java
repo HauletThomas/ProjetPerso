@@ -42,158 +42,157 @@ public class RiotService {
         return response; // Extract and return the PUUID from the response
     }
 
-    public String getMatchList(String puuid,Integer start, Integer count) {
-        String urlBuilder = UriComponentsBuilder.newInstance()
+
+    public MatchStatistics getMatchById(String puuid) {
+        String urlBuilder0 = UriComponentsBuilder.newInstance()
                 .scheme("https")
                 .host("europe.api.riotgames.com")
                 .path("/lol/match/v5/matches/by-puuid/{puuid}/ids")
-                .queryParam("start", start)
-                .queryParam("count", count)
+                .queryParam("queue", 420)
+                .queryParam("start", 0)
+                .queryParam("count", 20)
                 .queryParam("api_key", apiKey)
                 .buildAndExpand(puuid)
                 .toUriString();
 
-        RestTemplate restTemplate = new RestTemplate();
-        String response = restTemplate.getForObject(urlBuilder, String.class);
+        RestTemplate restTemplateMatchId = new RestTemplate();
+        String[] matchIds = restTemplateMatchId.getForObject(urlBuilder0, String[].class);
 
-        return response;
-    }
+        ObjectMapper objectMapper = new ObjectMapper();
+        MatchStatistics stats = new MatchStatistics();
 
-    public MatchStatistics getMatchById(String puuid) {
-        String urlBuilder = UriComponentsBuilder.newInstance()
-                .scheme("https")
-                .host("europe.api.riotgames.com")
-                .path("/lol/match/v5/matches/EUW1_7243432438")
-                .queryParam("api_key", apiKey)
-                .buildAndExpand()
-                .toUriString();
+        // Map pour compter les performances des champions
+        Map<String, Integer> allyWins = new HashMap<>();
+        Map<String, Integer> allyLosses = new HashMap<>();
+        Map<String, Integer> enemyWins = new HashMap<>();
+        Map<String, Integer> enemyLosses = new HashMap<>();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Accept", "*/*");
-        headers.add("Connection", "keep-alive");
+        assert matchIds != null;
+        for (String matchId: matchIds){
+            String urlBuilder = UriComponentsBuilder.newInstance()
+                    .scheme("https")
+                    .host("europe.api.riotgames.com")
+                    .path("/lol/match/v5/matches/{matchId}")
+                    .queryParam("api_key", apiKey)
+                    .buildAndExpand(matchId)
+                    .toUriString();
 
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Accept", "*/*");
+            headers.add("Connection", "keep-alive");
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                urlBuilder,
-                HttpMethod.GET,
-                entity,
-                String.class
-        );
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            RestTemplate restTemplate = new RestTemplate();
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    urlBuilder,
+                    HttpMethod.GET,
+                    entity,
+                    String.class
+            );
 
             // Récupération des IDs de match
 
+            try {
 
-            ObjectMapper objectMapper = new ObjectMapper();
-            MatchStatistics stats = new MatchStatistics();
+                JsonNode matchJson = objectMapper.readTree(String.valueOf(response.getBody()));
 
-            // Map pour compter les performances des champions
-            Map<String, Integer> allyWins = new HashMap<>();
-            Map<String, Integer> allyLosses = new HashMap<>();
-            Map<String, Integer> enemyWins = new HashMap<>();
-            Map<String, Integer> enemyLosses = new HashMap<>();
+                JsonNode info = matchJson.get("info");
+                JsonNode participants = info.get("participants");
 
-                try {
+                //boolean firstDragon = false;
+                String side = "Blue";
+                boolean win = false;
 
-                    JsonNode matchJson = objectMapper.readTree(String.valueOf(response.getBody()));
+                for (JsonNode participant : participants) {
+                    String summonerPuuid = participant.get("puuid").asText();
+                    if (summonerPuuid.equals(puuid)) {
+                        // Identifier votre teamId et votre statut de victoire
+                        win = participant.get("win").asBoolean();
+                        side = (participant.get("teamId").asInt() == 100) ? "Blue" : "Red";
 
-                    JsonNode info = matchJson.get("info");
-                    JsonNode participants = info.get("participants");
-
-                    //boolean firstDragon = false;
-                    String side = "Blue";
-                    boolean win = false;
-
-                    for (JsonNode participant : participants) {
-                        String summonerPuuid = participant.get("puuid").asText();
-                        if (summonerPuuid.equals(puuid)) {
-                            // Identifier votre teamId et votre statut de victoire
-                            win = participant.get("win").asBoolean();
-                            side = (participant.get("teamId").asInt() == 100) ? "Blue" : "Red";
-
-                            if (win) {
-                                stats.incrementWins();
-                            } else {
-                                stats.incrementLosses();
-                            }
-                            break; //joueur trouve
-                        }
-                    }
-
-                    for (JsonNode participant : participants) {
-
-                        String summonerPuuid = participant.get("puuid").asText();
-
-                        // Ignorer le joueur principal
-                        if (summonerPuuid.equals(puuid)) {
-                            continue;
-                        }
-                        String championName = participant.get("championName").asText();
-                        boolean isWin = participant.get("win").asBoolean();
-                        int teamId = participant.get("teamId").asInt();
-
-                        if (teamId == (side.equals("Blue") ? 100 : 200)) {
-                            // Alliés (même teamId que le joueur principal)
-                            if (isWin) {
-                                allyWins.merge(championName, 1, Integer::sum);
-                            } else {
-                                allyLosses.merge(championName, 1, Integer::sum);
-                            }
+                        if (win) {
+                            stats.incrementWins();
                         } else {
-                            // Ennemis (autre teamId)
-                            if (isWin) {
-                                enemyWins.merge(championName, 1, Integer::sum);
-                            } else {
-                                enemyLosses.merge(championName, 1, Integer::sum);
-                            }
+                            stats.incrementLosses();
+                        }
+                        break; //joueur trouve
+                    }
+                }
+
+                for (JsonNode participant : participants) {
+
+                    String summonerPuuid = participant.get("puuid").asText();
+
+                    // Ignorer le joueur principal
+                    if (summonerPuuid.equals(puuid)) {
+                        continue;
+                    }
+                    String championName = participant.get("championName").asText();
+                    boolean isWin = participant.get("win").asBoolean();
+                    int teamId = participant.get("teamId").asInt();
+
+                    if (teamId == (side.equals("Blue") ? 100 : 200)) {
+                        // Alliés (même teamId que le joueur principal)
+                        if (isWin) {
+                            allyWins.merge(championName, 1, Integer::sum);
+                        } else {
+                            allyLosses.merge(championName, 1, Integer::sum);
+                        }
+                    } else {
+                        // Ennemis (autre teamId)
+                        if (isWin) {
+                            enemyWins.merge(championName, 1, Integer::sum);
+                        } else {
+                            enemyLosses.merge(championName, 1, Integer::sum);
                         }
                     }
+                }
 
 
-                    // Récupérer les équipes
-                    JsonNode teams = info.get("teams");
+                // Récupérer les équipes
+                JsonNode teams = info.get("teams");
 
 // Vérifier si le premier dragon a été pris par l'équipe du joueur principal
-                    for (JsonNode team : teams) {
-                        int teamId = team.get("teamId").asInt();
-                        boolean firstDragon = team.get("objectives").get("dragon").get("first").asBoolean();
+                for (JsonNode team : teams) {
+                    int teamId = team.get("teamId").asInt();
+                    boolean firstDragon = team.get("objectives").get("dragon").get("first").asBoolean();
 
-                        if (teamId == (side.equals("Blue") ? 100 : 200)) {
-                            // Si le joueur principal est dans cette équipe
-                            if (firstDragon) {
-                                stats.incrementFirstDragonGames();
-                                if (win) {
-                                    stats.incrementFirstDragonWins();
-                                }
+                    if (teamId == (side.equals("Blue") ? 100 : 200)) {
+                        // Si le joueur principal est dans cette équipe
+                        if (firstDragon) {
+                            stats.incrementFirstDragonGames();
+                            if (win) {
+                                stats.incrementFirstDragonWins();
                             }
-                            break; // Pas besoin de vérifier l'autre équipe
                         }
+                        break; // Pas besoin de vérifier l'autre équipe
                     }
-
-                    // Analyse des participants...
-                } catch (HttpStatusCodeException e) {
-                    System.err.println("Erreur HTTP pour le match ");
-                } catch (Exception e) {
-                    System.err.println("Erreur lors de la récupération du match " );
                 }
+
+                // Analyse des participants...
+            } catch (HttpStatusCodeException e) {
+                System.err.println("Erreur HTTP pour le match ");
+            } catch (Exception e) {
+                System.err.println("Erreur lors de la récupération du match " );
+            }
 
             // Ajouter les tops des champions
             stats.setTopAlliesWin(getTopChampions(allyWins, 10));
             stats.setTopAlliesLoss(getTopChampions(allyLosses, 10));
             stats.setTopEnemiesWin(getTopChampions(enemyWins, 10));
             stats.setTopEnemiesLoss(getTopChampions(enemyLosses, 10));
+        }
 
-            return stats;
+                return stats;
 
     }
 
-
     private List<String> getTopChampions(Map<String, Integer> champions, int limit) {
         return champions.entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue())) // Trier par nombre décroissant
                 .limit(limit)
-                .map(Map.Entry::getKey)
+                .map(entry -> entry.getKey() + " (" + entry.getValue() + ")") // Inclure le nombre dans le résultat
                 .collect(Collectors.toList());
     }
 
