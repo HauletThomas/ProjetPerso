@@ -81,8 +81,6 @@ public class RiotService {
                 entity,
                 String.class
         );
-        System.out.println(response);
-
 
             // Récupération des IDs de match
 
@@ -96,83 +94,80 @@ public class RiotService {
             Map<String, Integer> enemyWins = new HashMap<>();
             Map<String, Integer> enemyLosses = new HashMap<>();
 
-
                 try {
-
 
                     JsonNode matchJson = objectMapper.readTree(String.valueOf(response.getBody()));
 
                     JsonNode info = matchJson.get("info");
                     JsonNode participants = info.get("participants");
 
-                    boolean firstDragon = false;
+                    //boolean firstDragon = false;
                     String side = "Blue";
                     boolean win = false;
-                    System.out.println("flag1");
 
                     for (JsonNode participant : participants) {
                         String summonerPuuid = participant.get("puuid").asText();
-                        System.out.println(summonerPuuid);
-
-                        String championName = participant.get("championName").asText();
-                        System.out.println(championName);
-
-                        boolean isWin = participant.get("win").asBoolean();
-                        System.out.println(isWin);
-
-                        int teamId = participant.get("teamId").asInt();
-                        System.out.println(teamId);
-
-
                         if (summonerPuuid.equals(puuid)) {
-                            System.out.println("flaf if puiid");
+                            // Identifier votre teamId et votre statut de victoire
+                            win = participant.get("win").asBoolean();
+                            side = (participant.get("teamId").asInt() == 100) ? "Blue" : "Red";
 
-                            // Votre côté et votre statut de victoire
-                            //win = isWin;
-                            side = (teamId == 100) ? "Blue" : "Red";
-                            System.out.println(win + "win");
-
-                            firstDragon = true;
-                            System.out.println(firstDragon);
-
-
-                            if (isWin) {
-                                System.out.println("flag win");
-
+                            if (win) {
                                 stats.incrementWins();
-                                System.out.println("flag win");
-
                             } else {
                                 stats.incrementLosses();
-                                System.out.println("flag lose");
+                            }
+                            break; //joueur trouve
+                        }
+                    }
 
+                    for (JsonNode participant : participants) {
+
+                        String summonerPuuid = participant.get("puuid").asText();
+
+                        // Ignorer le joueur principal
+                        if (summonerPuuid.equals(puuid)) {
+                            continue;
+                        }
+                        String championName = participant.get("championName").asText();
+                        boolean isWin = participant.get("win").asBoolean();
+                        int teamId = participant.get("teamId").asInt();
+
+                        if (teamId == (side.equals("Blue") ? 100 : 200)) {
+                            // Alliés (même teamId que le joueur principal)
+                            if (isWin) {
+                                allyWins.merge(championName, 1, Integer::sum);
+                            } else {
+                                allyLosses.merge(championName, 1, Integer::sum);
                             }
                         } else {
-                            // Comptabiliser les champions alliés ou ennemis
-                            if (teamId == 100 || teamId == 200) {
-                                if (isWin) {
-                                    if (teamId == 100) {
-                                        allyWins.merge(championName, 1, Integer::sum);
-                                    } else {
-                                        enemyLosses.merge(championName, 1, Integer::sum);
-                                    }
-                                } else {
-                                    if (teamId == 100) {
-                                        allyLosses.merge(championName, 1, Integer::sum);
-                                    } else {
-                                        enemyWins.merge(championName, 1, Integer::sum);
-                                    }
-                                }
+                            // Ennemis (autre teamId)
+                            if (isWin) {
+                                enemyWins.merge(championName, 1, Integer::sum);
+                            } else {
+                                enemyLosses.merge(championName, 1, Integer::sum);
                             }
                         }
                     }
-                    System.out.println("flag2");
 
-                    // Statistiques sur le premier dragon
-                    if (firstDragon) {
-                        stats.incrementFirstDragonGames();
-                        if (win) {
-                            stats.incrementFirstDragonWins();
+
+                    // Récupérer les équipes
+                    JsonNode teams = info.get("teams");
+
+// Vérifier si le premier dragon a été pris par l'équipe du joueur principal
+                    for (JsonNode team : teams) {
+                        int teamId = team.get("teamId").asInt();
+                        boolean firstDragon = team.get("objectives").get("dragon").get("first").asBoolean();
+
+                        if (teamId == (side.equals("Blue") ? 100 : 200)) {
+                            // Si le joueur principal est dans cette équipe
+                            if (firstDragon) {
+                                stats.incrementFirstDragonGames();
+                                if (win) {
+                                    stats.incrementFirstDragonWins();
+                                }
+                            }
+                            break; // Pas besoin de vérifier l'autre équipe
                         }
                     }
 
@@ -183,7 +178,6 @@ public class RiotService {
                     System.err.println("Erreur lors de la récupération du match " );
                 }
 
-            System.out.println("flage3");
             // Ajouter les tops des champions
             stats.setTopAlliesWin(getTopChampions(allyWins, 10));
             stats.setTopAlliesLoss(getTopChampions(allyLosses, 10));
