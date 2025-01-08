@@ -157,13 +157,37 @@ public class RiotService {
                 for (JsonNode team : teams) {
                     int teamId = team.get("teamId").asInt();
                     boolean firstDragon = team.get("objectives").get("dragon").get("first").asBoolean();
+                    boolean firstHorde = team.get("objectives").get("horde").get("first").asBoolean(); //voidgrubs
+                    boolean sixHorde = team.get("objectives").get("horde").get("kills").asInt() == 6; //voidgrubs
+                    int testsixHorde = team.get("objectives").get("horde").get("kills").asInt(); //voidgrubs
+
 
                     if (teamId == (side.equals("Blue") ? 100 : 200)) {
                         // Si le joueur principal est dans cette équipe
+                        if(win){
+                            System.out.println("win");
+
+                        }
+                        else System.out.println("lose");
+                        System.out.println(testsixHorde);
+
+
                         if (firstDragon) {
                             stats.incrementFirstDragonGames();
                             if (win) {
                                 stats.incrementFirstDragonWins();
+                            }
+                        }
+                        if (firstHorde) {
+                            stats.incrementFirstHordeGames();
+                            if (win) {
+                                stats.incrementFirstHordeWins();
+                            }
+                        }
+                        if (sixHorde) {
+                            stats.incrementSixHordeGames();
+                            if (win) {
+                                stats.incrementSixHordeWins();
                             }
                         }
                         break; // Pas besoin de vérifier l'autre équipe

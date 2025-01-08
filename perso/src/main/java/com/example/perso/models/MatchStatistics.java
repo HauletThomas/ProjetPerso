@@ -8,6 +8,10 @@ public class MatchStatistics {
     private int losses = 0;
     private int firstDragonGames = 0;
     private int firstDragonWins = 0;
+    private int firstHordeGames = 0;
+    private int firstHordeWins = 0;
+    private int sixHordeGames = 0;
+    private int sixHordeWins = 0;
     private List<String> topAlliesWin = new ArrayList<>();
     private List<String> topAlliesLoss = new ArrayList<>();
     private List<String> topEnemiesWin = new ArrayList<>();
@@ -27,6 +31,22 @@ public class MatchStatistics {
 
     public void incrementFirstDragonWins() {
         this.firstDragonWins++;
+    }
+
+    public void incrementFirstHordeGames(){
+        this.firstHordeGames++;
+    }
+
+    public void incrementFirstHordeWins(){
+        this.firstHordeWins++;
+    }
+
+    public void incrementSixHordeGames(){
+        this.sixHordeGames++;
+    }
+
+    public void incrementSixHordeWins(){
+        this.sixHordeWins++;
     }
 
     public double getFirstDragonWinRate() {
@@ -98,4 +118,35 @@ public class MatchStatistics {
     }
 
 
+    public int getFirstHordeGames() {
+        return firstHordeGames;
+    }
+
+    public void setFirstHordeGames(int firstHordeGames) {
+        this.firstHordeGames = firstHordeGames;
+    }
+
+    public int getFirstHordeWins() {
+        return firstHordeWins;
+    }
+
+    public void setFirstHordeWins(int firstHordeWins) {
+        this.firstHordeWins = firstHordeWins;
+    }
+
+    public int getSixHordeWins() {
+        return sixHordeWins;
+    }
+
+    public void setSixHordeWins(int sixHordeWins) {
+        this.sixHordeWins = sixHordeWins;
+    }
+
+    public int getSixHordeGames() {
+        return sixHordeGames;
+    }
+
+    public void setSixHordeGames(int sixHordeGames) {
+        this.sixHordeGames = sixHordeGames;
+    }
 }
